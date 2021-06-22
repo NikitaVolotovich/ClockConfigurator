@@ -6,16 +6,17 @@ public class ClockConfigurator {
 
     private float busClock;
     private float requiredClock;
-    private float nearestClock;
+    private float closestClock;
     private float finalDifference;
     private final ArrayList<Multiplexer> multiplexers = new ArrayList();
     private final ArrayList<Float> dividers = new ArrayList<>();
     private ArrayList<Float> finalDividers;
+    private boolean isComputed = false;
 
     public ClockConfigurator(float busClock, float requiredClock) {
         this.requiredClock = requiredClock;
         this.busClock = busClock;
-        this.nearestClock = busClock;
+        this.closestClock = busClock;
         this.finalDifference = busClock;
     }
 
@@ -85,44 +86,33 @@ public class ClockConfigurator {
             }
         }
 
-        for(Float a: multiplexers.get(0).getDividers()){
-            if(size > 1){
-                for(Float b: multiplexers.get(1).getDividers()){
-                    if(size > 2){
-                        for(Float c: multiplexers.get(2).getDividers()){
-                            if(size > 3){
-                                for(Float d: multiplexers.get(3).getDividers()) {
-                                    if (size > 4) {
-                                        for (Float e : multiplexers.get(4).getDividers()) {
-                                            dividers.add(a); dividers.add(b); dividers.add(c);dividers.add(d); dividers.add(e);
-                                            if(nearestFinder())
-                                                return;
-                                        }
-                                    } else {
-                                        dividers.add(a); dividers.add(b); dividers.add(c);dividers.add(d);
-                                        if(nearestFinder())
-                                            return;
-                                    }
-                                }
-                            } else {
-                                dividers.add(a); dividers.add(b); dividers.add(c);
-                                if(nearestFinder())
-                                    return;
-                            }
-                        }
-                    } else {
-                        dividers.add(a); dividers.add(b);
-                        if(nearestFinder())
-                            return;
-                    }
-                }
-            } else {
-                dividers.add(a);
-                if(nearestFinder())
-                    return;
-            }
+        ArrayList<Integer> combination = new ArrayList<>();
+        for (int i = 0; i < multiplexers.size(); i++) {
+            combination.add(0);
         }
-        System.out.println("Nearest frequency is: " + nearestClock );
+        while (!isComputed) {
+            for(int i = 0; i < combination.size(); i++){
+                dividers.add(multiplexers.get(i).getDividers().get(combination.get(i)));
+            }
+
+            boolean isCombinationChanged = false;
+            for(int i = combination.size() - 1; i >= 0; i--){
+                if(combination.get(i) < multiplexers.get(i).getDividers().size() - 1){
+                    combination.set(i, combination.get(i) + 1);
+                    isCombinationChanged = true;
+                    for(int j = i+1; j < combination.size(); j++){
+                        combination.set(j, 0);
+                    }
+                    break;
+                }
+            }
+            isComputed = !isCombinationChanged;
+
+            if(nearestFinder())
+                isComputed = true;
+            dividers.clear();
+        }
+        System.out.println("Closest frequency is: " + closestClock);
         System.out.println("Dividers are:" + finalDividers);
     }
 
@@ -131,25 +121,22 @@ public class ClockConfigurator {
         for(Float f: dividers) {
             result /= f;
         }
-        System.out.println(result); //Show all calculated frequencies
+//        System.out.println(result); //Show all calculated frequencies
         return result;
     }
 
     private boolean nearestFinder(){
-        float temp = divider(dividers);
-        if(temp == requiredClock){
-            System.out.println("Success: ");
-            for(Float i: dividers){
-                System.out.print(i + "\t" );
-            }
+        float quotient = divider(dividers);
+        if(quotient == requiredClock){
+            closestClock = requiredClock;
             finalDividers = new ArrayList<>(dividers);
             dividers.clear();
             return true;
         } else {
-            float difference = Math.abs(requiredClock - temp);
+            float difference = Math.abs(requiredClock - quotient);
             if(finalDifference > difference){
                 finalDifference = difference;
-                nearestClock = temp;
+                closestClock = quotient;
                 finalDividers = new ArrayList<>(dividers);
             }
         }
